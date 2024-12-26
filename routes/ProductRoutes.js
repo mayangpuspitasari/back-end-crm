@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
-// Mengambil semua produk
+// Mengambil semua produk yang ada di database
 router.get('/', (req, res) => {
   const query = 'SELECT * FROM produk';
   db.query(query, (err, result) => {
@@ -75,23 +75,22 @@ router.put('/:id', (req, res) => {
 
 // Melihat Detail Produk
 router.get('/:id', (req, res) => {
-    const { id } = req.params; // Ambil ID dari parameter URL
-    const query = 'SELECT * FROM produk WHERE id = ?';
-  
-    db.query(query, [id], (err, result) => {
-      if (err) {
-        return res.status(500).send(err); // Jika terjadi error, kirimkan respons error
-      }
-  
-      // Jika produk tidak ditemukan
-      if (result.length === 0) {
-        return res.status(404).send('Produk tidak ditemukan');
-      }
-  
-      res.status(200).json(result[0]); // Kirimkan detail produk
-    });
+  const { id } = req.params; // Ambil ID dari parameter URL
+  const query = 'SELECT * FROM produk WHERE id = ?';
+
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      return res.status(500).send(err); // Jika terjadi error, kirimkan respons error
+    }
+
+    // Jika produk tidak ditemukan
+    if (result.length === 0) {
+      return res.status(404).send('Produk tidak ditemukan');
+    }
+
+    res.status(200).json(result[0]); // Kirimkan detail produk
   });
-  
+});
 
 // Export router
 module.exports = router;
