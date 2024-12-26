@@ -17,3 +17,11 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 const productRoutes = require('./routes/ProductRoutes');
 app.use('/produk', productRoutes);
 
+// router pelanggan
+const PelangganRoutes = require('./routes/PelangganRoutes');
+app.use('/pelanggan', PelangganRoutes);
+
+// router user
+const UserRoutes = require('./routes/UserRoutes');
+app.use('/user', UserRoutes);
+
