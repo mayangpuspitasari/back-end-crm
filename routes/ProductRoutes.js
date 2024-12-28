@@ -49,12 +49,12 @@ router.delete('/:id', (req, res) => {
 });
 
 // Update Produk
-router.put('/:id', (req, res) => {
+router.put('/:id', upload.single('gambar'), (req, res) => {
   const { id } = req.params;
-  const { judul, harga, description, rating } = req.body; // Data utama
-  const gambar = req.body.gambar || null; // Gambar opsional
+  const { judul, harga, description, rating } = req.body;
+  const gambarBaru = req.file ? `/uploads/${req.file.filename}` : null; // Gambar baru jika ada
 
-  // Jika gambar tidak dikirim, ambil gambar lama dari database
+  // Periksa apakah produk ada di database
   const checkQuery = 'SELECT gambar FROM produk WHERE id = ?';
   db.query(checkQuery, [id], (checkErr, checkResult) => {
     if (checkErr) {
@@ -66,9 +66,10 @@ router.put('/:id', (req, res) => {
 
     const gambarLama = checkResult[0].gambar;
 
-    // Gunakan gambar lama jika gambar baru tidak dikirim
-    const gambarBaru = gambar || gambarLama;
+    // Gunakan gambar baru jika ada, jika tidak gunakan gambar lama
+    const finalGambar = gambarBaru || gambarLama;
 
+    // Perbarui data produk di database
     const updateQuery = `
       UPDATE produk 
       SET gambar = ?, judul = ?, harga = ?, description = ?, rating = ? 
@@ -76,7 +77,7 @@ router.put('/:id', (req, res) => {
     `;
     db.query(
       updateQuery,
-      [gambarBaru, judul, harga, description, rating, id],
+      [finalGambar, judul, harga, description, rating, id],
       (updateErr, updateResult) => {
         if (updateErr) {
           return res.status(500).send(updateErr);
@@ -92,6 +93,16 @@ router.put('/:id', (req, res) => {
   });
 });
 
+
+router.get('/popular', (req, res) => {
+  const query = 'SELECT * FROM produk ORDER BY rating DESC LIMIT 3'; // Hanya ambil 3 produk
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database query failed' });
+    }
+    res.status(200).json(results);
+  });
+});
 
 // Melihat Detail Produk
 router.get('/:id', (req, res) => {
