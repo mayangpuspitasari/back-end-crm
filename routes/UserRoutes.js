@@ -1,73 +1,70 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const db = require('../config/database');
 
-// Mengambil semua produk yang ada di database
-router.get('/', (req, res) => {
-  const query = 'SELECT * FROM user';
-  db.query(query, (err, result) => {
-    if (err) {
-      return res.status(500).send(err); // Mengirimkan respons error dan menghentikan eksekusi
-    }
-    res.status(200).json(result); // Respons sukses
-  });
+// Registrasi User
+router.post('/register', async (req, res) => {
+  const { username, password, role, email } = req.body;
+
+  // Validasi input
+  if (!username || !password || !email) {
+      return res.status(400).send('Semua field (username, password, email) harus diisi');
+  }
+
+  // Validasi role "admin" tidak boleh digunakan
+  if (role && role.toLowerCase() === 'admin') {
+      return res.status(403).send('Role "admin" tidak dapat digunakan untuk registrasi');
+  }
+
+  try {
+      // Cek apakah username atau email sudah ada
+      const checkUser = 'SELECT * FROM user WHERE username = ? OR email = ?';
+      const [results] = await db.promise().query(checkUser, [username, email]);
+
+      if (results.length > 0) return res.status(400).send('Username atau email sudah digunakan');
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Simpan ke database
+      const sql = 'INSERT INTO user (username, password, role, email) VALUES (?, ?, ?, ?)';
+      await db.promise().query(sql, [username, hashedPassword, role || 'user', email]);
+
+      res.status(201).send('Registrasi berhasil');
+  } catch (err) {
+      console.error(err);
+      res.status(500).send('Terjadi kesalahan server');
+  }
 });
 
-// Tambah Produk
-router.post('/', (req, res) => {
-  const { username, password, role } = req.body;
-  const query = 'INSERT INTO user (username,password, role) VALUES (?, ?, ?)';
-  db.query(query, [username, password, role], (err) => {
-    if (err) {
-      return res.status(500).send(err); // Mengirimkan respons error dan menghentikan eksekusi
-    }
-    res.status(201).send('User berhasil ditambahkan'); // Respons sukses
-  });
-});
+// Login User
+router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
 
-// Hapus Produk
-router.delete('/:id_user', (req, res) => {
-  const { id_user } = req.params; // Ambil ID dari parameter URL
-  const query = 'DELETE FROM user WHERE id_user = ?';
+  try {
+    // Cek user di database
+    const sql = 'SELECT * FROM user WHERE username = ?';
+    const [results] = await db.promise().query(sql, [username]);
 
-  db.query(query, [id_user], (err, result) => {
-    if (err) {
-      return res.status(500).send(err); // Jika terjadi error, kirim respons error
-    }
+    if (results.length === 0) return res.status(404).send('User tidak ditemukan');
 
-    // Periksa apakah ada data yang dihapus
-    if (result.affectedRows === 0) {
-      return res.status(404).send('User tidak ditemukan');
-    }
+    const user = results[0];
 
-    res.status(200).send('User berhasil dihapus');
-  });
-});
+    // Validasi password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).send('Password salah');
 
-// Update Produk
-router.put('/:id_user', (req, res) => {
-  const { id_user } = req.params; // Ambil ID dari parameter URL
-  const { username, password, role } = req.body; // Ambil data dari body request
-  const query = `
-      UPDATE pelanggan 
-      SET username = ?, password = ?, role = ? = ? 
-      WHERE id_user = ?
-    `;
+    // Buat token JWT
+    const token = jwt.sign({ id: user.id_user, role: user.role }, 'secret_key', { expiresIn: '1h' });
 
-  db.query(query, [username, password, role, id_user], (err, result) => {
-    if (err) {
-      return res.status(500).send(err); // Jika terjadi error, kirim respons error
-    }
-
-    // Periksa apakah ada data yang diperbarui
-    if (result.affectedRows === 0) {
-      return res.status(404).send('User tidak ditemukan');
-    }
-
-    res.status(200).send('User berhasil diperbarui');
-  });
+    res.json({ token, role: user.role });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Terjadi kesalahan server');
+  }
 });
 
 // Export router
 module.exports = router;
-
