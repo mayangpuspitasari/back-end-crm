@@ -4,6 +4,18 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const db = require('../config/database');
 
+
+// Mengambil semua produk yang ada di database
+router.get('/', (req, res) => {
+  const query = 'SELECT * FROM  user';
+  db.query(query, (err, result) => {
+    if (err) {
+      return res.status(500).send(err); // Mengirimkan respons error dan menghentikan eksekusi
+    }
+    res.status(200).json(result); // Respons sukses
+  });
+});
+
 // Registrasi User
 router.post('/register', async (req, res) => {
   const { username, password, role, email } = req.body;
@@ -64,6 +76,25 @@ router.post('/login', async (req, res) => {
     console.error(err);
     res.status(500).send('Terjadi kesalahan server');
   }
+});
+
+//Hapus user
+router.delete('/:id_user', (req, res) => {
+  const { id_user } = req.params; // Ambil ID dari parameter URL
+  const query = 'DELETE FROM user WHERE id_user = ?';
+
+  db.query(query, [id_user], (err, result) => {
+    if (err) {
+      return res.status(500).send(err); // Jika terjadi error, kirim respons error
+    }
+
+    // Periksa apakah ada data yang dihapus
+    if (result.affectedRows === 0) {
+      return res.status(404).send('User tidak ditemukan');
+    }
+
+    res.status(200).send('User berhasil dihapus');
+  });
 });
 
 // Export router
