@@ -13,9 +13,9 @@ app.get('/', (req, res) => res.send('API is running'));
 
 app.use(
   cors({
-    origin: 'http://localhost:5173', // Sesuaikan dengan URL frontend Anda
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Tentukan metode HTTP yang diperbolehkan
-    allowedHeaders: ['Content-Type', 'Authorization'], // Tentukan header yang diperbolehkan
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 );
 
@@ -25,6 +25,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Rute untuk produk
 const productRoutes = require('./routes/ProductRoutes');
 app.use('/produk', productRoutes);
+
+// Rute untuk transaksi
+const transaksiRoutes = require('./routes/TransaksiRoutes');
+app.use('/transaksi', transaksiRoutes);
 
 // Rute untuk user
 const UserRoutes = require('./routes/UserRoutes');
