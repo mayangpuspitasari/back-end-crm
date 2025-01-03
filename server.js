@@ -27,8 +27,8 @@ const productRoutes = require('./routes/ProductRoutes');
 app.use('/produk', productRoutes);
 
 // Rute untuk transaksi
-const transaksiRoutes = require('./routes/TransaksiRoutes');
-app.use('/transaksi', transaksiRoutes);
+const orderRoutes = require('./routes/OrderRoutes');
+app.use('/orders', orderRoutes);
 
 // Rute untuk user
 const UserRoutes = require('./routes/UserRoutes');
