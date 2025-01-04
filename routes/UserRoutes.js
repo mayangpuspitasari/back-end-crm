@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const db = require('../config/database');
 
+const SECRET_KEY = process.env.JWT_SECRET || 'secret_key';
+
 // Mengambil semua user yang ada di database
 router.get('/', (req, res) => {
   const query = "SELECT * FROM user WHERE role = 'user'";
@@ -62,31 +64,39 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ message: 'Username dan password harus diisi.' });
+  }
+
   try {
-    // Cek user di database
+    // Cek apakah user ada di database
     const sql = 'SELECT * FROM user WHERE username = ?';
     const [results] = await db.promise().query(sql, [username]);
 
-    if (results.length === 0)
-      return res.status(404).send('User tidak ditemukan');
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'User tidak ditemukan.' });
+    }
 
     const user = results[0];
 
-    // Validasi password
+    // Validasi password menggunakan bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).send('Password salah');
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Password salah.' });
+    }
 
-    // Buat token JWT
-    const token = jwt.sign(
-      { id: user.id_user, role: user.role },
-      'secret_key',
-      { expiresIn: '1h' },
-    );
+    // Buat token JWT dengan payload dan secret key
+    const token = jwt.sign({ id: user.id_user, role: user.role }, SECRET_KEY, {
+      expiresIn: '1h',
+    });
 
-    res.json({ token, role: user.role });
+    // Kembalikan token dan role kepada client
+    res.status(200).json({ token, role: user.role });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Terjadi kesalahan server');
+    console.error('Login Error:', err);
+    res.status(500).json({ message: 'Terjadi kesalahan server.' });
   }
 });
 
