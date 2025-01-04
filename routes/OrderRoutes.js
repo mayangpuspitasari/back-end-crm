@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const bukti = require('../milddware/bukti');
-
+const authenticateUser = require('../milddware/auth');
 
 // Mengambil semua order yang ada di database
 router.get('/', (req, res) => {
@@ -20,31 +20,39 @@ router.get('/', (req, res) => {
   });
 });
 
-
 // Tambah order
-router.post('/', bukti.single('bukti_pembayaran'), (req, res) => {
-  const {
-    user_id,
-    produk_id,
-    jumlah,
-    nama_pemesan,
-    alamat,
-    metode_pembayaran,
-    total,
-  } = req.body;
+router.post(
+  '/',
+  authenticateUser,
+  bukti.single('bukti_pembayaran'),
+  (req, res) => {
+    const {
+      produk_id,
+      jumlah,
+      nama_pemesan,
+      alamat,
+      metode_pembayaran,
+      total,
+    } = req.body;
 
-  const buktiPembayaranPath = req.file ? `/bukti_pembayaran/${req.file.filename}` : null;
+    const user_id = req.user.id; // Ambil user_id dari token JWT
+    const buktiPembayaranPath = req.file
+      ? `/bukti_pembayaran/${req.file.filename}`
+      : null;
 
-  // Validasi data
-  if (!user_id || !produk_id || !jumlah || !nama_pemesan || !alamat || !metode_pembayaran || !total || !buktiPembayaranPath) {
-    return res.status(400).send('Semua data wajib diisi, termasuk bukti pembayaran');
-  }
-
-  // Validasi apakah user_id ada di tabel users
-  const userQuery = 'SELECT * FROM user WHERE id_user = ?';
-  db.query(userQuery, [user_id], (err, userResult) => {
-    if (err || userResult.length === 0) {
-      return res.status(404).send('User tidak ditemukan');
+    // Validasi data
+    if (
+      !produk_id ||
+      !jumlah ||
+      !nama_pemesan ||
+      !alamat ||
+      !metode_pembayaran ||
+      !total ||
+      !buktiPembayaranPath
+    ) {
+      return res
+        .status(400)
+        .send('Semua data wajib diisi, termasuk bukti pembayaran');
     }
 
     // Validasi apakah produk_id ada di tabel produk
@@ -56,30 +64,40 @@ router.post('/', bukti.single('bukti_pembayaran'), (req, res) => {
 
       // Jika semuanya valid, masukkan pesanan ke tabel orders
       const query = `
-        INSERT INTO orders 
-        (user_id, produk_id, jumlah, nama_pemesan, alamat, metode_pembayaran, total, bukti_pembayaran)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      INSERT INTO orders 
+      (user_id, produk_id, jumlah, nama_pemesan, alamat, metode_pembayaran, total, bukti_pembayaran)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
       db.query(
         query,
-        [user_id, produk_id, jumlah, nama_pemesan, alamat, metode_pembayaran, total, buktiPembayaranPath],
+        [
+          user_id,
+          produk_id,
+          jumlah,
+          nama_pemesan,
+          alamat,
+          metode_pembayaran,
+          total,
+          buktiPembayaranPath,
+        ],
         (err, result) => {
           if (err) {
             console.error('Database Error:', err);
-            return res.status(500).send('Terjadi kesalahan saat menambahkan pesanan');
+            return res
+              .status(500)
+              .send('Terjadi kesalahan saat menambahkan pesanan');
           }
 
           res.status(201).send({
             message: 'Pesanan berhasil ditambahkan',
             orderId: result.insertId, // Mengembalikan ID pesanan yang baru dibuat
           });
-        }
+        },
       );
     });
-  });
-});
-
+  },
+);
 
 // Update pesanan
 router.put('/:id', bukti.single('bukti_pembayaran'), (req, res) => {
@@ -93,11 +111,21 @@ router.put('/:id', bukti.single('bukti_pembayaran'), (req, res) => {
     total,
   } = req.body;
 
-  const buktiPembayaranPath = req.file ? `/bukti_pembayaran/${req.file.filename}` : null;
+  const buktiPembayaranPath = req.file
+    ? `/bukti_pembayaran/${req.file.filename}`
+    : null;
   const { id } = req.params; // Mengambil id dari parameter URL
 
   // Validasi data
-  if (!user_id || !produk_id || !jumlah || !nama_pemesan || !alamat || !metode_pembayaran || !total) {
+  if (
+    !user_id ||
+    !produk_id ||
+    !jumlah ||
+    !nama_pemesan ||
+    !alamat ||
+    !metode_pembayaran ||
+    !total
+  ) {
     return res.status(400).send('Semua data wajib diisi');
   }
 
@@ -124,11 +152,23 @@ router.put('/:id', bukti.single('bukti_pembayaran'), (req, res) => {
 
       db.query(
         query,
-        [user_id, produk_id, jumlah, nama_pemesan, alamat, metode_pembayaran, total, buktiPembayaranPath, id],
+        [
+          user_id,
+          produk_id,
+          jumlah,
+          nama_pemesan,
+          alamat,
+          metode_pembayaran,
+          total,
+          buktiPembayaranPath,
+          id,
+        ],
         (err, result) => {
           if (err) {
             console.error('Database Error:', err);
-            return res.status(500).send('Terjadi kesalahan saat memperbarui pesanan');
+            return res
+              .status(500)
+              .send('Terjadi kesalahan saat memperbarui pesanan');
           }
 
           // Periksa apakah data berhasil diupdate
@@ -139,13 +179,11 @@ router.put('/:id', bukti.single('bukti_pembayaran'), (req, res) => {
           res.status(200).send({
             message: 'Pesanan berhasil diperbarui',
           });
-        }
+        },
       );
     });
   });
 });
-
-
 
 // Hapus pesanan
 router.delete('/:id', (req, res) => {
@@ -168,7 +206,6 @@ router.delete('/:id', (req, res) => {
   });
 });
 
-
-
 // Export router
 module.exports = router;
+
