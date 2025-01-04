@@ -92,8 +92,12 @@ router.post('/login', async (req, res) => {
       expiresIn: '1h',
     });
 
-    // Kembalikan token dan role kepada client
-    res.status(200).json({ token, role: user.role });
+    // Kembalikan token, role, dan username kepada client
+    res.status(200).json({
+      token,
+      role: user.role,
+      username: user.username, // Tambahkan username di sini
+    });
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Terjadi kesalahan server.' });
