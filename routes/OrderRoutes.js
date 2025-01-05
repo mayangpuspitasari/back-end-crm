@@ -48,12 +48,13 @@ router.post(
       !alamat ||
       !metode_pembayaran ||
       !total ||
-      !buktiPembayaranPath
+      (metode_pembayaran !== 'COD' && !buktiPembayaranPath)
     ) {
       return res
         .status(400)
-        .send('Semua data wajib diisi, termasuk bukti pembayaran');
+        .send('Semua data wajib diisi, termasuk bukti pembayaran jika bukan COD');
     }
+    
 
     // Validasi apakah produk_id ada di tabel produk
     const produkQuery = 'SELECT * FROM produk WHERE id = ?';
@@ -118,16 +119,19 @@ router.put('/:id', bukti.single('bukti_pembayaran'), (req, res) => {
 
   // Validasi data
   if (
-    !user_id ||
     !produk_id ||
     !jumlah ||
     !nama_pemesan ||
     !alamat ||
     !metode_pembayaran ||
-    !total
+    !total ||
+    (metode_pembayaran !== 'COD' && !buktiPembayaranPath)
   ) {
-    return res.status(400).send('Semua data wajib diisi');
+    return res
+      .status(400)
+      .send('Semua data wajib diisi, termasuk bukti pembayaran jika bukan COD');
   }
+  
 
   // Validasi apakah user_id ada di tabel users
   const userQuery = 'SELECT * FROM users WHERE id = ?';
