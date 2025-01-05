@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const db = require('../config/database');
 
-const SECRET_KEY = process.env.JWT_SECRET || 'secret_key';
+
 
 // Mengambil semua user yang ada di database
 router.get('/', (req, res) => {
@@ -60,7 +60,11 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login User
+
+//Api Login
+
+const SECRET_KEY = process.env.JWT_SECRET || 'rahasia_anda'; // Gunakan nilai default yang sama
+
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -89,20 +93,22 @@ router.post('/login', async (req, res) => {
 
     // Buat token JWT dengan payload dan secret key
     const token = jwt.sign({ id: user.id_user, role: user.role }, SECRET_KEY, {
-      expiresIn: '1h',
+      expiresIn: '24h',
     });
 
-    // Kembalikan token, role, dan username kepada client
+    // Kembalikan token, role, username, dan user_id kepada client
     res.status(200).json({
       token,
       role: user.role,
-      username: user.username, // Tambahkan username di sini
+      username: user.username,
+      user_id: user.id_user, // Tambahkan user_id di sini
     });
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Terjadi kesalahan server.' });
   }
 });
+
 
 //Hapus user
 router.delete('/:id_user', (req, res) => {

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const SECRET_KEY = 'rahasia_anda'; // Ganti dengan secret key Anda
+const SECRET_KEY = process.env.JWT_SECRET || 'rahasia_anda'; // Ganti dengan secret key Anda
 
 const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization;
