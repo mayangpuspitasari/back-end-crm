@@ -41,20 +41,19 @@ router.post(
       : null;
 
     // Validasi data
-    if (
-      !produk_id ||
-      !jumlah ||
-      !nama_pemesan ||
-      !alamat ||
-      !metode_pembayaran ||
-      !total ||
-      (metode_pembayaran !== 'COD' && !buktiPembayaranPath)
-    ) {
-      return res
-        .status(400)
-        .send('Semua data wajib diisi, termasuk bukti pembayaran jika bukan COD');
-    }
-    
+   if (
+    !produk_id ||
+    !jumlah ||
+    !nama_pemesan ||
+    !alamat ||
+    !metode_pembayaran ||
+    !total ||
+    (metode_pembayaran !== 'COD' && !buktiPembayaranPath)
+  ) {
+    return res
+      .status(400)
+      .send('Semua data wajib diisi, termasuk bukti pembayaran jika bukan COD');
+  }
 
     // Validasi apakah produk_id ada di tabel produk
     const produkQuery = 'SELECT * FROM produk WHERE id = ?';
@@ -101,114 +100,116 @@ router.post(
 );
 
 // Update pesanan
-router.put('/:id', bukti.single('bukti_pembayaran'), (req, res) => {
-  const {
-    user_id,
-    produk_id,
-    jumlah,
-    nama_pemesan,
-    alamat,
-    metode_pembayaran,
-    total,
-  } = req.body;
+router.put('/:id', bukti.single('bukti_pembayaran'), async (req, res) => {
+  try {
+    const {
+      user_id,
+      produk_id,
+      jumlah,
+      nama_pemesan,
+      alamat,
+      metode_pembayaran,
+    } = req.body;
 
-  const buktiPembayaranPath = req.file
-    ? `/bukti_pembayaran/${req.file.filename}`
-    : null;
-  const { id } = req.params; // Mengambil id dari parameter URL
+    const { id } = req.params;
 
-  // Validasi data
-  if (
-    !produk_id ||
-    !jumlah ||
-    !nama_pemesan ||
-    !alamat ||
-    !metode_pembayaran ||
-    !total ||
-    (metode_pembayaran !== 'COD' && !buktiPembayaranPath)
-  ) {
-    return res
-      .status(400)
-      .send('Semua data wajib diisi, termasuk bukti pembayaran jika bukan COD');
-  }
-  
+    // Validasi data
+    if (
+      !produk_id ||
+      !jumlah ||
+      !nama_pemesan ||
+      !alamat ||
+      !metode_pembayaran
+    ) {
+      return res.status(400).send('Semua data wajib diisi');
+    }
 
-  // Validasi apakah user_id ada di tabel users
-  const userQuery = 'SELECT * FROM users WHERE id = ?';
-  db.query(userQuery, [user_id], (err, userResult) => {
-    if (err || userResult.length === 0) {
+    // Validasi user_id
+    const [userResult] = await db
+      .promise()
+      .query('SELECT * FROM users WHERE id = ?', [user_id]);
+    if (userResult.length === 0) {
       return res.status(404).send('User tidak ditemukan');
     }
 
-    // Validasi apakah produk_id ada di tabel produk
-    const produkQuery = 'SELECT * FROM produk WHERE id = ?';
-    db.query(produkQuery, [produk_id], (err, produkResult) => {
-      if (err || produkResult.length === 0) {
-        return res.status(404).send('Produk tidak ditemukan');
-      }
+    // Validasi produk_id dan ambil harga produk
+    const [produkResult] = await db
+      .promise()
+      .query('SELECT * FROM produk WHERE id = ?', [produk_id]);
+    if (produkResult.length === 0) {
+      return res.status(404).send('Produk tidak ditemukan');
+    }
+    const hargaProduk = produkResult[0].harga;
 
-      // Query untuk update data pesanan
-      const query = `
-        UPDATE orders
-        SET user_id = ?, produk_id = ?, jumlah = ?, nama_pemesan = ?, alamat = ?, metode_pembayaran = ?, total = ?, bukti_pembayaran = ?
-        WHERE id = ?
-      `;
+    // Hitung total harga berdasarkan jumlah
+    const total = jumlah * hargaProduk;
 
-      db.query(
-        query,
-        [
-          user_id,
-          produk_id,
-          jumlah,
-          nama_pemesan,
-          alamat,
-          metode_pembayaran,
-          total,
-          buktiPembayaranPath,
-          id,
-        ],
-        (err, result) => {
-          if (err) {
-            console.error('Database Error:', err);
-            return res
-              .status(500)
-              .send('Terjadi kesalahan saat memperbarui pesanan');
-          }
+    // Ambil bukti pembayaran lama jika tidak ada file baru
+    const [currentOrder] = await db
+      .promise()
+      .query('SELECT * FROM orders WHERE id = ?', [id]);
+    if (currentOrder.length === 0) {
+      return res.status(404).send('Pesanan tidak ditemukan');
+    }
+    const buktiPembayaranPath = req.file
+      ? `/bukti_pembayaran/${req.file.filename}`
+      : currentOrder[0].bukti_pembayaran;
 
-          // Periksa apakah data berhasil diupdate
-          if (result.affectedRows === 0) {
-            return res.status(404).send('Pesanan tidak ditemukan');
-          }
+    // Perbarui data pesanan
+    const [updateResult] = await db.promise().query(
+      `
+      UPDATE orders
+      SET user_id = ?, produk_id = ?, jumlah = ?, nama_pemesan = ?, alamat = ?, metode_pembayaran = ?, total = ?, bukti_pembayaran = ?
+      WHERE id = ?
+      `,
+      [
+        user_id,
+        produk_id,
+        jumlah,
+        nama_pemesan,
+        alamat,
+        metode_pembayaran,
+        total,
+        buktiPembayaranPath,
+        id,
+      ]
+    );
 
-          res.status(200).send({
-            message: 'Pesanan berhasil diperbarui',
-          });
-        },
-      );
-    });
-  });
+    if (updateResult.affectedRows === 0) {
+      return res.status(404).send('Pesanan tidak ditemukan');
+    }
+
+    res.status(200).send({ message: 'Pesanan berhasil diperbarui', total });
+  } catch (error) {
+    console.error('Database Error:', error);
+    res.status(500).send('Terjadi kesalahan saat memperbarui pesanan');
+  }
 });
+
+
 
 // Hapus pesanan
 router.delete('/:id', (req, res) => {
-  const { id } = req.params; // Mengambil id dari parameter URL
-
+  const { id } = req.params; // Ambil ID dari parameter URL
   const query = 'DELETE FROM orders WHERE id = ?';
 
   db.query(query, [id], (err, result) => {
     if (err) {
-      console.error('Database Error:', err);
-      return res.status(500).send('Terjadi kesalahan saat menghapus pesanan');
+      console.error('Database Error:', err); // Log kesalahan untuk debugging
+      return res.status(500).send('Terjadi kesalahan pada server');
     }
 
-    // Periksa apakah data berhasil dihapus
+    // Periksa apakah ada data yang dihapus
     if (result.affectedRows === 0) {
       return res.status(404).send('Pesanan tidak ditemukan');
     }
 
-    res.status(200).send('Pesanan berhasil dihapus');
+    res.status(200).send({ message: 'Pesanan berhasil dihapus' });
   });
 });
+
+
+
 
 // Export router
 module.exports = router;

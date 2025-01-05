@@ -21,6 +21,9 @@ app.use(
 
 // Middleware untuk melayani folder 'uploads' sebagai file statis
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/bukti', express.static(path.join(__dirname, 'bukti')));
+
+
 
 // Rute untuk produk
 const productRoutes = require('./routes/ProductRoutes');
